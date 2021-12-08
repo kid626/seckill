@@ -1,0 +1,16 @@
+author: Bruce
+dbType: mysql
+dbUrl: "jdbc:mysql://localhost:3306/seckill?characterEncoding=utf8&serverTimezone=GMT%2B8"
+dbDriverName: "com.mysql.cj.jdbc.Driver"
+dbUsername: root
+dbPassword: root
+
+parentPackage: com.bruce.seckill
+projectName: seckill
+#prefix: demo
+includes: [ "user" ]
+
+#outputDir:
+#usebtl: true
+#usevm: true
+useftl: true
