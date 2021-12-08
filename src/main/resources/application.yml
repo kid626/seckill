@@ -21,6 +21,16 @@ spring:
       testOnReturn: false
       poolPreparedStatements: true
       maxOpenPreparedStatements: 20
+  redis:
+    redisson:
+      config: |
+        singleServerConfig:
+          password: 12@3qwR
+          address: "redis://127.0.0.1:6379"
+          database: 0
+        threads: 0
+        nettyThreads: 0
+        transportMode: "NIO"
 
 mybatis-plus:
   mapper-locations: classpath:com/bruce/seckill/sqlmap/auto/*.xml

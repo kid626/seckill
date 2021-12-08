@@ -1,6 +1,7 @@
 package com.bruce.seckill.controller;
 
 
+import com.bruce.seckill.service.UserService;
 import com.bruce.seckill.service.impl.StockOrderServiceImpl;
 import com.google.common.util.concurrent.RateLimiter;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +23,10 @@ public class StockOrderController {
     @Autowired
     private StockOrderServiceImpl stockOrderService;
 
-    RateLimiter rateLimiter = RateLimiter.create(10);
+    @Autowired
+    private UserService userService;
+
+    private RateLimiter rateLimiter = RateLimiter.create(10);
 
     @GetMapping("/createWrongOrder/{sid}")
     @ResponseBody
@@ -39,7 +43,6 @@ public class StockOrderController {
     }
 
     @GetMapping("/createOptimisticOrder/{sid}")
-    @ResponseBody
     public String createOptimisticOrder(@PathVariable int sid) {
         // 1. 阻塞式获取令牌
         log.info("等待时间" + rateLimiter.acquire());
@@ -57,6 +60,40 @@ public class StockOrderController {
             return "购买失败，库存不足";
         }
         return String.format("购买成功，剩余库存为：%d", id);
+    }
+
+    @GetMapping(value = "/getVerifyHash")
+    public String getVerifyHash(@RequestParam(value = "sid") Integer sid,
+                                @RequestParam(value = "userId") Integer userId) {
+        String hash;
+        try {
+            hash = userService.getVerifyHash(sid, userId);
+        } catch (Exception e) {
+            log.error("获取验证hash失败，原因：[{}]", e.getMessage());
+            return "获取验证hash失败";
+        }
+        return String.format("请求抢购验证hash值为：%s", hash);
+    }
+
+    @GetMapping(value = "/createOrderWithVerifiedUrl")
+    public String createOrderWithVerifiedUrl(@RequestParam(value = "sid") Integer sid,
+                                             @RequestParam(value = "userId") Integer userId,
+                                             @RequestParam(value = "verifyHash") String verifyHash) {
+        int stockLeft;
+        try {
+            int count = userService.addUserCount(userId);
+            log.info("用户截至该次的访问次数为: [{}]", count);
+            boolean isBanned = userService.getUserIsBanned(userId);
+            if (isBanned) {
+                return "购买失败，超过频率限制";
+            }
+            stockLeft = stockOrderService.createVerifiedOrder(sid, userId, verifyHash);
+            log.info("购买成功，剩余库存为: [{}]", stockLeft);
+        } catch (Exception e) {
+            log.error("购买失败：[{}]", e.getMessage());
+            return e.getMessage();
+        }
+        return String.format("购买成功，剩余库存为：%d", stockLeft);
     }
 
 }
