@@ -30,6 +30,7 @@ spring:
           database: 0
         threads: 0
         nettyThreads: 0
+        codec: !<org.redisson.client.codec.StringCodec> {}
         transportMode: "NIO"
 
 mybatis-plus:
