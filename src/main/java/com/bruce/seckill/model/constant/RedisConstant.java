@@ -16,4 +16,6 @@ public class RedisConstant {
 
     public static final String LIMIT_KEY = "seckill:limit:key:{0}";
 
+    public static final String STOCK_COUNT = "seckill:stock:count:{0}";
+
 }
