@@ -1,12 +1,18 @@
 package com.bruce.seckill.controller;
 
 
+import com.bruce.seckill.service.StockOrderService;
+import com.bruce.seckill.service.StockService;
 import com.bruce.seckill.service.UserService;
-import com.bruce.seckill.service.impl.StockOrderServiceImpl;
+import com.bruce.seckill.thread.DelCacheThread;
+import com.bruce.seckill.thread.ThreadPoolUtil;
 import com.google.common.util.concurrent.RateLimiter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @Copyright Copyright © 2021 Bruce . All rights reserved.
@@ -21,12 +27,23 @@ import org.springframework.web.bind.annotation.*;
 public class StockOrderController {
 
     @Autowired
-    private StockOrderServiceImpl stockOrderService;
+    private StockOrderService stockOrderService;
+    @Autowired
+    private StockService stockService;
 
     @Autowired
     private UserService userService;
 
     private RateLimiter rateLimiter = RateLimiter.create(10);
+
+    private final ExecutorService executor =
+            new ThreadPoolUtil.Builder()
+                    .setPrefix("del-cache-task")
+                    .setKeepAliveTime(60)
+                    .setTimeUnit(TimeUnit.SECONDS)
+                    .setScheduled(false)
+                    .setUncaughtExceptionHandler(ThreadPoolUtil.DEFAULT_UNCAUGHT_EXCEPTION_HANDLER)
+                    .build();
 
     @GetMapping("/createWrongOrder/{sid}")
     @ResponseBody
@@ -94,6 +111,29 @@ public class StockOrderController {
             return e.getMessage();
         }
         return String.format("购买成功，剩余库存为：%d", stockLeft);
+    }
+
+
+    /**
+     * 下单接口：先删除缓存，再更新数据库，缓存延时双删
+     */
+    @GetMapping("/createOrderWithCache/{sid}")
+    public String createOrderWithCache(@PathVariable int sid) {
+        int count;
+        try {
+            // 删除库存缓存
+            stockService.delStockCountCache(sid);
+            // 完成扣库存下单事务
+            count = stockOrderService.createOptimisticOrder(sid);
+            log.info("完成下单事务");
+            // 延时指定时间后再次删除缓存
+            executor.execute(new DelCacheThread(sid, stockService));
+        } catch (Exception e) {
+            log.error("购买失败：[{}]", e.getMessage());
+            return "购买失败，库存不足";
+        }
+        log.info("购买成功，剩余库存为: [{}]", count);
+        return String.format("购买成功，剩余库存为：%d", count);
     }
 
 }

@@ -25,7 +25,7 @@ spring:
     redisson:
       config: |
         singleServerConfig:
-          password: 12@3qwR
+          password:
           address: "redis://127.0.0.1:6379"
           database: 0
         threads: 0

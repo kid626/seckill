@@ -81,6 +81,7 @@ public class StockServiceImpl implements StockService {
 
     @Override
     public void delStockCountCache(int sid) {
+        log.info("删除商品id：[{}] 缓存", sid);
         String hashKey = MessageFormat.format(RedisConstant.STOCK_COUNT, String.valueOf(sid));
         component.getRBucket(hashKey).delete();
     }
