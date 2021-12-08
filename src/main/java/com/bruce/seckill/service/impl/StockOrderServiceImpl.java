@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.text.MessageFormat;
+import java.util.Iterator;
 
 /**
  * @Copyright Copyright © 2021 Bruce . All rights reserved.
@@ -103,6 +104,47 @@ public class StockOrderServiceImpl implements StockOrderService {
         return stock.getCount() - (stock.getSale());
     }
 
+    @Override
+    public void createOrderByMq(Integer sid, Integer userId) throws Exception {
+
+        // 模拟多个用户同时抢购，导致消息队列排队等候10秒
+        Thread.sleep(10000);
+
+        Stock stock;
+        //校验库存（不要学我在trycatch中做逻辑处理，这样是不优雅的。这里这样处理是为了兼容之前的秒杀系统文章）
+        try {
+            stock = checkStock(sid);
+        } catch (Exception e) {
+            log.info("库存不足！");
+            return;
+        }
+        //乐观锁更新库存
+        boolean updateStock = saleStockOptimistic(stock);
+        if (!updateStock) {
+            log.warn("扣减库存失败，库存已经为0");
+            return;
+        }
+
+        log.info("扣减库存成功，剩余库存：[{}]", stock.getCount() - stock.getSale() - 1);
+        stockService.delStockCountCache(sid);
+        log.info("删除库存缓存");
+
+        //创建订单
+        log.info("写入订单至数据库");
+        createOrderWithUserInfoInDB(stock, userId);
+        log.info("写入订单至缓存供查询");
+        createOrderWithUserInfoInCache(stock, userId);
+        log.info("下单完成");
+    }
+
+    @Override
+    public Boolean checkUserOrderInfoInCache(Integer sid, Integer userId) {
+        String key = MessageFormat.format(RedisConstant.USER_ORDER, String.valueOf(sid));
+        log.info("检查用户Id：[{}] 是否抢购过商品Id：[{}] 检查Key：[{}]", userId, sid, key);
+        Iterator<String> iterator = component.getRSet(key).iterator(String.valueOf(userId));
+        return iterator.hasNext();
+    }
+
     private Stock checkStock(int sid) {
         Stock stock = stockService.getStockById(sid);
         if (stock.getSale().equals(stock.getCount())) {
@@ -138,7 +180,17 @@ public class StockOrderServiceImpl implements StockOrderService {
         order.setSid(stock.getId());
         order.setName(stock.getName());
         order.setUserId(userId);
-        return orderMapper.insert(order);
+        orderMapper.insert(order);
+        return order.getId();
+    }
+
+    /**
+     * 创建订单：保存用户订单信息到缓存
+     */
+    private void createOrderWithUserInfoInCache(Stock stock, Integer userId) {
+        String key = MessageFormat.format(RedisConstant.USER_ORDER, String.valueOf(stock.getId()));
+        log.info("写入用户订单数据Set：[{}] [{}]", key, userId.toString());
+        component.getRSet(key).add(String.valueOf(userId));
     }
 
 }

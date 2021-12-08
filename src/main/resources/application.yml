@@ -33,6 +33,12 @@ spring:
         codec: !<org.redisson.client.codec.StringCodec> {}
         transportMode: "NIO"
 
+  rabbitmq:
+    addresses: ip
+    port: 5672
+    username: guest
+    password: guest
+
 mybatis-plus:
   mapper-locations: classpath:com/bruce/seckill/sqlmap/auto/*.xml
   configuration:

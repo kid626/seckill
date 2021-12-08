@@ -18,4 +18,6 @@ public class RedisConstant {
 
     public static final String STOCK_COUNT = "seckill:stock:count:{0}";
 
+    public static final String USER_ORDER = "seckill:user:order:{0}";
+
 }

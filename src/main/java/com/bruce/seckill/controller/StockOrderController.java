@@ -1,6 +1,8 @@
 package com.bruce.seckill.controller;
 
 
+import com.alibaba.fastjson.JSONObject;
+import com.bruce.seckill.rabbit.RabbitOrderDTO;
 import com.bruce.seckill.service.StockOrderService;
 import com.bruce.seckill.service.StockService;
 import com.bruce.seckill.service.UserService;
@@ -8,6 +10,7 @@ import com.bruce.seckill.thread.DelCacheThread;
 import com.bruce.seckill.thread.ThreadPoolUtil;
 import com.google.common.util.concurrent.RateLimiter;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,9 +33,10 @@ public class StockOrderController {
     private StockOrderService stockOrderService;
     @Autowired
     private StockService stockService;
-
     @Autowired
     private UserService userService;
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
 
     private RateLimiter rateLimiter = RateLimiter.create(10);
 
@@ -134,6 +138,50 @@ public class StockOrderController {
         }
         log.info("购买成功，剩余库存为: [{}]", count);
         return String.format("购买成功，剩余库存为：%d", count);
+    }
+
+    /**
+     * 下单接口：异步处理订单
+     */
+    @GetMapping(value = "/createUserOrderWithMq")
+    public String createUserOrderWithMq(@RequestParam(value = "sid") Integer sid,
+                                        @RequestParam(value = "userId") Integer userId) {
+        try {
+            // 检查缓存中该用户是否已经下单过
+            Boolean hasOrder = stockOrderService.checkUserOrderInfoInCache(sid, userId);
+            if (hasOrder != null && hasOrder) {
+                log.info("该用户已经抢购过");
+                return "你已经抢购过了，不要太贪心.....";
+            }
+            // 没有下单过，检查缓存中商品是否还有库存
+            log.info("没有抢购过，检查缓存中商品是否还有库存");
+            Integer count = stockService.getStockCount(sid);
+            if (count == 0) {
+                return "秒杀请求失败，库存不足.....";
+            }
+
+            // 有库存，则将用户id和商品id封装为消息体传给消息队列处理
+            // 注意这里的有库存和已经下单都是缓存中的结论，存在不可靠性，在消息队列中会查表再次验证
+            log.info("有库存：[{}]", count);
+            RabbitOrderDTO dto = new RabbitOrderDTO();
+            dto.setSid(sid);
+            dto.setUserId(userId);
+            sendToOrderQueue(JSONObject.toJSONString(dto));
+            return "秒杀请求提交成功";
+        } catch (Exception e) {
+            log.error("下单接口：异步处理订单异常：", e);
+            return "秒杀请求失败，服务器正忙.....";
+        }
+    }
+
+    /**
+     * 向消息队列orderQueue发送消息
+     *
+     * @param message
+     */
+    private void sendToOrderQueue(String message) {
+        log.info("这就去通知消息队列开始下单：[{}]", message);
+        this.rabbitTemplate.convertAndSend("", "orderQueue", message);
     }
 
 }

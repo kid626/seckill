@@ -23,4 +23,14 @@ public interface StockOrderService {
      * 创建正确订单：验证库存 + 用户 + 时间 合法性 + 下单乐观锁
      */
     int createVerifiedOrder(Integer sid, Integer userId, String verifyHash);
+
+    /**
+     * 创建订单
+     */
+    void createOrderByMq(Integer sid, Integer userId) throws Exception;
+
+    /**
+     * 检查缓存中用户是否已经有订单
+     */
+    Boolean checkUserOrderInfoInCache(Integer sid, Integer userId);
 }
