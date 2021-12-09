@@ -125,7 +125,7 @@ public class StockOrderServiceImpl implements StockOrderService {
             return;
         }
 
-        log.info("扣减库存成功，剩余库存：[{}]", stock.getCount() - stock.getSale() - 1);
+        log.info("扣减库存成功，剩余库存：[{}]", stock.getCount() - stock.getSale());
         stockService.delStockCountCache(sid);
         log.info("删除库存缓存");
 
