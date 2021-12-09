@@ -175,6 +175,25 @@ public class StockOrderController {
     }
 
     /**
+     * 检查缓存中用户是否已经生成订单
+     */
+    @GetMapping(value = "/checkOrderByUserIdInCache")
+    @ResponseBody
+    public String checkOrderByUserIdInCache(@RequestParam(value = "sid") Integer sid,
+                                            @RequestParam(value = "userId") Integer userId) {
+        // 检查缓存中该用户是否已经下单过
+        try {
+            Boolean hasOrder = stockOrderService.checkUserOrderInfoInCache(sid, userId);
+            if (hasOrder != null && hasOrder) {
+                return "恭喜您，已经抢购成功！";
+            }
+        } catch (Exception e) {
+            log.error("检查订单异常：", e);
+        }
+        return "很抱歉，你的订单尚未生成，继续排队。";
+    }
+
+    /**
      * 向消息队列orderQueue发送消息
      *
      * @param message
