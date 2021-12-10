@@ -107,8 +107,8 @@ public class StockOrderServiceImpl implements StockOrderService {
     @Override
     public void createOrderByMq(Integer sid, Integer userId) throws Exception {
 
-        // 模拟多个用户同时抢购，导致消息队列排队等候10秒
-        Thread.sleep(10000);
+        // // 模拟多个用户同时抢购，导致消息队列排队等候10秒
+        // Thread.sleep(10000);
 
         Stock stock;
         //校验库存（不要学我在trycatch中做逻辑处理，这样是不优雅的。这里这样处理是为了兼容之前的秒杀系统文章）

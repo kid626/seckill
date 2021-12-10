@@ -66,7 +66,7 @@ public class StockOrderController {
     @GetMapping("/createOptimisticOrder/{sid}")
     public String createOptimisticOrder(@PathVariable int sid) {
         // 1. 阻塞式获取令牌
-        log.info("等待时间" + rateLimiter.acquire());
+        // log.info("等待时间" + rateLimiter.acquire());
         // 2. 非阻塞式获取令牌
         // if (!rateLimiter.tryAcquire(1000, TimeUnit.MILLISECONDS)) {
         //     log.warn("你被限流了，真不幸，直接返回失败");
@@ -148,11 +148,11 @@ public class StockOrderController {
                                         @RequestParam(value = "userId") Integer userId) {
         try {
             // 检查缓存中该用户是否已经下单过
-            Boolean hasOrder = stockOrderService.checkUserOrderInfoInCache(sid, userId);
-            if (hasOrder != null && hasOrder) {
-                log.info("该用户已经抢购过");
-                return "你已经抢购过了，不要太贪心.....";
-            }
+            // Boolean hasOrder = stockOrderService.checkUserOrderInfoInCache(sid, userId);
+            // if (hasOrder != null && hasOrder) {
+            //     log.info("该用户已经抢购过");
+            //     return "你已经抢购过了，不要太贪心.....";
+            // }
             // 没有下单过，检查缓存中商品是否还有库存
             log.info("没有抢购过，检查缓存中商品是否还有库存");
             Integer count = stockService.getStockCount(sid);
